@@ -1,5 +1,11 @@
+import { METHODS } from "../shared/constant/network";
+import { WINDOW_EVENTS } from "../shared/events/events";
+
 (function () {
-  if (window.__interceptFetchInstalled) return;
+  if (window.__interceptFetchInstalled) {
+    return;
+  }
+
   window.__interceptFetchInstalled = true;
 
   const originalFetch = window.fetch;
@@ -10,14 +16,20 @@
     list: [],
   };
 
-  const normalizeMethod = (m) => (m || "GET").toUpperCase();
+  const normalizeMethod = (m) => (m || METHODS.GET).toUpperCase();
 
   const matchesRule = (rule, url, method) => {
     try {
       const ruleMethod = normalizeMethod(rule.method);
       const reqMethod = normalizeMethod(method);
-      if (ruleMethod !== reqMethod) return false;
-      if (!rule.url) return false;
+
+      if (ruleMethod !== reqMethod) {
+        return false;
+      }
+      if (!rule.url) {
+        return false;
+      }
+
       return url.includes(rule.url);
     } catch {
       return false;
@@ -29,7 +41,7 @@
     const method =
       (init && init.method) ||
       (typeof input !== "string" && input && input.method) ||
-      "GET";
+      METHODS.GET;
 
     if (
       state.enabled &&
@@ -37,16 +49,16 @@
       state.selectedIds.length > 0 &&
       typeof url === "string"
     ) {
-      const candidates = state.list.filter((r) =>
-        state.selectedIds.includes(r.id)
-      );
+      const candidates = state.list.filter((r) => {
+        return state.selectedIds.includes(r.id);
+      });
       const rule = candidates.find((r) => matchesRule(r, url, method));
       if (rule) {
         const bodyText = rule.response || "";
         const statusCode = Number(rule.status) || 200;
         const headers = new Headers({ "Content-Type": "application/json" });
         return Promise.resolve(
-          new Response(bodyText, { status: statusCode, headers })
+          new Response(bodyText, { status: statusCode, headers }),
         );
       }
     }
@@ -62,11 +74,19 @@
 
   // Получаем обновления состояния от контент-скрипта
   window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
+    if (event.source !== window) {
+      return;
+    }
+
     const msg = event.data;
-    if (!msg || typeof msg !== "object") return;
-    if (msg.type === "intercept:update") {
-      const p = msg.payload || {};
+
+    if (!msg || typeof msg !== "object") {
+      return;
+    }
+
+    if (msg.type === WINDOW_EVENTS.UPDATE_INTERCEPTION_STATE) {
+      const p = msg.payload ?? {};
+
       state.enabled = !!p.enabled;
       state.selectedIds = Array.isArray(p.selectedIds) ? p.selectedIds : [];
       state.list = Array.isArray(p.list) ? p.list : state.list;
